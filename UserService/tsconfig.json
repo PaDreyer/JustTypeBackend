@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "plugins" : [{ "transform": "ts-transformer-enumerate/transformer" }],
+    "esModuleInterop": true,
+    "noImplicitAny": false,
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "experimentalDecorators": true,
+    "pretty": true,
+    "types": [
+      "jest",
+      "node"
+    ],
+    "sourceMap": true,
+    "target": "es6",
+    "baseUrl": "./"
+  },
+  "exclude": [
+    "node_modules",
+  ]
+}
