@@ -23,14 +23,16 @@ import bodyparser from 'body-parser';
 			//helmet()
 			bodyparser.json(),
 			bodyparser.urlencoded({ extended: false }),
-			jwt({
+            /*
+            jwt({
 				secret: 'shhhhhhared-secret',
 				getToken: (req) => {
 					console.log("der req: ", req);
 					console.log("body: ", req.body);
 					return req.body;
 				}
-			})
+            })
+            */
 		],
 		routes: [{
 			path: "/",
@@ -224,7 +226,7 @@ const ApiService: ServiceSchema = {
 
 		routes: [{
 			path: "/api",
-			authentication : true,
+			//authentication : true,
 			whitelist: [
 				// Access to any actions in all services under "/api" URL
 				"**",

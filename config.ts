@@ -1,0 +1,5 @@
+export = {
+    jwt: {
+        secret: "hablablaba"
+    }
+};

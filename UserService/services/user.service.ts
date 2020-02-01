@@ -14,7 +14,6 @@ const UserService : ServiceSchema = {
         entityValidator: {
 			username: { type: "string", min: 4, pattern: /^[a-zA-Z0-9]+$/ },
 			password: { type: "string", min: 8 },
-			mail: { type: "email" },
 		}
     },
     dependencies : ["api"],
@@ -23,7 +22,6 @@ const UserService : ServiceSchema = {
     model: mongoose.model("User", new mongoose.Schema({
         username : { type : String, required : true },
         password : { type : String, required : true },
-        mail : { type : String, required : true },
         createdAt : { type : Date, required : true },
         credit : { type : Number , default : 0 },
         groups : { type : Array , default : [] },
@@ -60,7 +58,7 @@ const UserService : ServiceSchema = {
             const password = ctx.password;
             const mail = ctx?.mail;
 
-            this._
+            //this._
 
             console.log("der context: ", ctx.o);
         }

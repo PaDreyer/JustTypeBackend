@@ -9,7 +9,8 @@
     "pretty": true,
     "types": [
       "jest",
-      "node"
+      "node",
+      "express"
     ],
     "sourceMap": true,
     "target": "es6",
