@@ -16,6 +16,15 @@ const ApiService: ServiceSchema = {
 				// Access to any actions in all services under "/api" URL
 				"**",
 			],
+		},
+		{
+			aliases : {
+				async "POST /api/authenticated"(req : any, res : any){
+					console.log("Das Result: ", req);
+					const result = await req.$service.broker.call('auth.authenticated');
+					return result;
+				}
+			}
 		}],
 
 		// Serve assets from "public" folder

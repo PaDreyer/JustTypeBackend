@@ -9,8 +9,7 @@ import MoleculerClientError from 'moleculer';
 const UserService : ServiceSchema = {
     name : 'user',
     settings : {
-        jwtSecret : "weryZave",
-        fields: ["_id", "username", "mail", "credit", "inBet"],
+        fields: ["_id", "username", "password", "credit", "inBet", "groups"],
         entityValidator: {
 			username: { type: "string", min: 4, pattern: /^[a-zA-Z0-9]+$/ },
 			password: { type: "string", min: 8 },
@@ -38,15 +37,17 @@ const UserService : ServiceSchema = {
             ]
         },
         after: {
+            /*
             get: [
                 // Arrow function as a Hook
                 (ctx : any, res : any) => {
                     // Remove sensitive data
-                    delete res.password;
+                    //delete res.password;
     
                     return res;
                 }
             ]
+            */
         },
     },
     events : {
@@ -54,13 +55,6 @@ const UserService : ServiceSchema = {
     },
     actions : {
         register(ctx : any) {
-            const username = ctx.username;
-            const password = ctx.password;
-            const mail = ctx?.mail;
-
-            //this._
-
-            console.log("der context: ", ctx.o);
         }
     },
     methods : {

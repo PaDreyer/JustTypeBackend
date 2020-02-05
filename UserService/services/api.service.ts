@@ -11,83 +11,125 @@ import {
 //import jwt from 'jsonwebtoken'
 import jwt from 'express-jwt'
 import bodyparser from 'body-parser';
+import cors from 'cors';
+import cookieParser from 'cookie-parser'
+import helmet from 'helmet';
+
+
+const whitelist = ['http://localhost:3000']
+var corsOptions = {
+    origin: function (origin, callback) {
+      if (whitelist.indexOf(origin) !== -1) {
+        callback(null, true)
+      } else {
+        callback(new Error('Not allowed by CORS'))
+      }
+    }
+  }
 
 @Service({
 	name: "api",
 	mixins: [ApiGateway],
 	settings: {
+        path: "/",
 		port: 3001,
 		// Global middlewares. Applied to all routes.
 		use: [
-			//cookieParser(),
-			//helmet()
+            helmet(),
+            //cors(), // call with corsOptions!
+            cookieParser(),
 			bodyparser.json(),
 			bodyparser.urlencoded({ extended: false }),
-            /*
-            jwt({
-				secret: 'shhhhhhared-secret',
-				getToken: (req) => {
-					console.log("der req: ", req);
-					console.log("body: ", req.body);
-					return req.body;
-				}
-            })
-            */
 		],
-		routes: [{
-			path: "/",
-			authentication : false,
-			whitelist: [
-				// Access to any actions in all services under "/api" URL
-				"**",
-			],
-			bodyParsers: {
-				json: true
-			},
-			aliases: {
-				"GET login" : "api.login",
-				"GET register" : "api.register",
-				"GET user" : "user.find"
-			}
-		}]
+		routes: [
+            {
+                whitelist: [
+                    '**'
+                ],
+                cors: {
+                    origin: ["http://localhost:3000"],
+                    methods: ["POST"],
+                    credentials: true
+                },
+                mappingPolicy: "restrict",
+                bodyParsers: {
+                    json: true
+                },
+                aliases: {
+                    "POST authenticated" : "auth.authenticated",
+                    "POST login" : "auth.login",
+                    "POST register" : "auth.register"
+                },
+                onBeforeCall(ctx, route, req, res){
+                    console.log("cookies: ", req.cookies)
+                    console.log("req.body: ", req.body);
+                    ctx.meta.route = route;
+                    ctx.meta.req = req;
+                    ctx.meta.res = res;
+                },
+                onAfterCall(ctx, route, req, res){
+                    if(ctx.meta.token) {
+                        ctx.meta.$responseHeaders = {
+                            "Set-Cookie" : `betroom=${ctx.meta.token};`,
+                            "Content-Type" : "application/json"
+                        };
+                    } else {
+                        ctx.meta.$responseHeaders = {
+                            "Content-Type" : "application/json"
+                        }
+                    }
+                    return JSON.stringify(ctx.meta.result);
+                    //res.end(JSON.stringify(ctx.meta.result))
+                }
+            },
+            /*
+            {
+                whitelist: [
+                    '**'
+                ],
+                cors: {
+                    origin: "*", // [Domain, Domain, Domain]
+                    methods: "*",
+                    credentials: true
+                },
+                mappingPolicy: "restrict",
+                bodyParsers: {
+                    json: true
+                },
+                aliases: {
+                    "POST login" : "auth.login",
+                    "POST register" : "auth.register"
+                },
+                onBeforeCall(ctx, route, req, res){
+                    ctx.meta.route = route;
+                    ctx.meta.req = req;
+                    ctx.meta.res = res;
+                },
+                onAfterCall(ctx, route, req, res){
+                    if(ctx.meta.token) {
+                        ctx.meta.$responseHeaders = {
+                            "Set-Cookie" : `betroom=${ctx.meta.token}; HttpOnly`,
+                            "Content-Type" : "application/json"
+                        };
+                    } else {
+                        ctx.meta.$responseHeaders = {
+                            "Content-Type" : "application/json"
+                        }
+                    }
+                    res.end(JSON.stringify(ctx.meta.result))
+                }
+            }
+            */
+    ],
+    onError(req, res, err) {
+        res.setHeader("Content-Type", "application/json");
+        res.writeHead(200);
+        console.log(JSON.stringify(err, null, 2));
+        res.end({e: err, user : null, token: null, authenticated : false});
+    }		
 	},
 })
 class Api extends moleculer.Service {
-
-@Action({
-	cache: true,
-	params: {
-		user: { 
-			type: "object", 
-			props: {
-				username: { type: "string", min: 5 },
-				password: { type: "string", min: 8 }
-			}
-		}
-	}	
-})
-login(ctx){
-	this.verifyToken(ctx);
-}
-
-@Action({
-	cache: true,
-	params : {
-		user: { type: "object", props: {
-			username: { type: "string" },
-			password: { type: "string", min: 2 }
-		}}
-	}
-})
-register(){}
-
-@Method
-verifyToken(ctx){
-	console.log("all data: ", ctx);
-}
-
-@Event()
-tokenVerified(){}
 }
 
 export = Api;
@@ -235,167 +277,11 @@ const ApiService: ServiceSchema = {
 				json: true
 			}
 		},
-		/*
-		{
-            aliases: {
-                // Call `auth.login` action with `GET /login` or `POST /login`
-                "login": "auth.login",
-
-                // Restrict the request method
-                "POST users": "users.create",
-
-                // The `name` comes from named param. 
-                // You can access it with `ctx.params.name` in action
-                "GET greeter/:name": "test.greeter",
-			},
-			bodyParsers: {
-				json: true
-			}
-		},
-		{
-            aliases: {
-                "GET users": "users.list",
-                "GET users/:id": "users.get",
-                "POST users": "users.create",
-                "PUT users/:id": "users.update",
-                "DELETE users/:id": "users.remove"
-			},
-			bodyParsers: {
-				json: true
-			}
-        },
-		{
-            aliases: {
-                "REST users": "users"
-			},
-			bodyParsers: {
-				json: true
-			}
-		},
-		{
-            aliases: {
-                "POST upload"(req, res) {
-                    this.parseUploadedFile(req, res);
-                },
-                "GET custom"(req, res) {
-                    res.end('hello from custom handler')
-                }
-			},
-			bodyParsers: {
-				json: true
-			}
-		},
-		{
-            mappingPolicy: "restrict",
-            aliases: {
-                "POST add": "math.add"
-			},
-			bodyParsers: {
-				json: true
-			}
-		},
-		{
-			path: "",
-
-			// You should disable body parsers
-			bodyParsers: {
-				json: false,
-				urlencoded: false
-			},
-
-			aliases: {
-				// File upload from HTML multipart form
-				"POST /": "multipart:file.save",
-				
-				// File upload from AJAX or cURL
-				"PUT /": "stream:file.save",
-
-				// File upload from HTML form and overwrite busboy config
-				"POST /multi": {
-					type: "multipart",
-					// Action level busboy config
-					busboyConfig: {
-						limits: { files: 3 }
-					},
-					action: "file.save"
-				}
-			},
-
-			// Route level busboy config.
-			// More info: https://github.com/mscdex/busboy#busboy-methods
-			busboyConfig: {
-				limits: { files: 1 }
-				// Can be defined limit event handlers
-				// `onPartsLimit`, `onFilesLimit` or `onFieldsLimit`
-			},
-			
-
-			mappingPolicy: "restrict"
-		}
-		*/
 	],
 
 		// Serve assets from "public" folder
 		assets: {
 			folder: "public",
-		},
-	},
-	actions: {
-				/**
-		 * Login with username & password
-		 * 
-		 * @actions
-		 * @param {Object} user - User credentials
-		 * 
-		 * @returns {Object} Logged in user with token
-		 */
-		login: {
-			params: {
-				user: { type: "object", props: {
-					username: { type: "string" },
-					password: { type: "string", min: 2 }
-				}}
-			},
-			handler(ctx) {
-				const { username, password } = ctx.params.user;
-
-				return this.Promise.resolve()
-					.then( ()=>{
-						console.log("db functions: ", this)
-					})
-			}
-		},
-		/**
-		 * Get user by JWT token (for API GW authentication)
-		 * 
-		 * @actions
-		 * @param {String} token - JWT token
-		 * 
-		 * @returns {Object} Resolved user
-		 */
-		resolveToken: {
-			cache: {
-				keys: ["token"],
-				ttl: 60 * 60 // 1 hour
-			},			
-			params: {
-				token: "string"
-			},
-			handler(ctx) {
-				return new this.Promise((resolve, reject) => {
-					jwt.verify(ctx.params.token, this.settings.JWT_SECRET, (err, decoded) => {
-						if (err)
-							return reject(err);
-
-						resolve(decoded);
-					});
-
-				})
-					.then(decoded => {
-						if (decoded.id)
-							return this.getById(decoded.id);
-					});
-			}
 		},
 	},
 	methods: {

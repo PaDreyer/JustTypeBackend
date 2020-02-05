@@ -1,18 +1,15 @@
 import { Action, Event, ConcatMultiple } from 'moleculer-ts';
 import auth from './auth.service';
 import { string } from 'moleculer-service-decorators';
-auth.prototype.register
+
 
 // required to specify your service
-export const name: 'api' = 'api';
+export const name: 'auth' = 'auth';
 
-const test: Action<string,{},object> = { 
-    name : "register",
-    in : {}, 
-    out : {}
+interface register extends Action<"register", {}, {}> { 
 } 
 // export list of own service actions
-export type OwnActions = [Action];
+export type OwnActions = [register];
 
 // export list of own service events
 export type OwnEvents = [];
