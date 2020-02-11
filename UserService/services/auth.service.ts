@@ -96,7 +96,8 @@ class AuthService extends moleculer.Service {
 		console.log(`Login with user: ${ctx.params.user.username} and password: ${ctx.params.user.password}`)
 		if(user.length != 0){
 			if(bcrypt.compareSync(ctx.params.user.password, user[0].password)) {
-				const token = jwt.sign({user}, config.jwt.secret);
+				const token = jwt.sign(user[0], config.jwt.secret);
+				console.log("token : ", token, " and user : ", user)
 				ctx.meta.token = token;
 				ctx.meta.result = { authenticated : true, user : user[0], token, e : null}
 			} else {
@@ -114,7 +115,9 @@ class AuthService extends moleculer.Service {
 		
 		if(!cookie) return ctx.meta.result = { authenticated : false, user : null, token : null, e : 'there is no cookie'}
 		try {
-			const authorized = <{user}>jwt.verify(cookie, config.jwt.secret)
+			const authorized = <{_id}>jwt.verify(cookie, config.jwt.secret)
+			const userExists = await this.broker.call('user.get', { id: authorized!._id });
+			if(!userExists) return ctx.meta.result = { authenticated : false, user : null, token : null, e : 'user doesnt exists anymore'}
 			ctx.meta.result =  { authenticated : true, user : authorized  , token : ctx.params.token }
 			return;
 		} catch(e) {

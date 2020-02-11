@@ -57,7 +57,8 @@
     "moleculer-service-decorators": "^1.0.4",
     "moleculer-ts": "^2.0.5",
     "moleculer-web": "^0.8.0",
-    "mongoose": "^5.8.10"
+    "mongoose": "^5.8.10",
+    "shortid": "^2.2.15"
   },
   "engines": {
     "node": ">= 8.x.x"
