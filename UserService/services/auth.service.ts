@@ -80,6 +80,11 @@ class AuthService extends moleculer.Service {
 		}
 		const token = jwt.sign(user, config.jwt.secret);
 		ctx.meta.token = token;
+
+
+		//patch user
+		const patchedUser = await ctx.call('user.patchUser', { user });
+		console.log("patchedUser: ", patchedUser);
 		ctx.meta.result = { token, user, e : null, authenticated : true }
 	}
 
@@ -97,9 +102,14 @@ class AuthService extends moleculer.Service {
 		if(user.length != 0){
 			if(bcrypt.compareSync(ctx.params.user.password, user[0].password)) {
 				const token = jwt.sign(user[0], config.jwt.secret);
-				console.log("token : ", token, " and user : ", user)
 				ctx.meta.token = token;
-				ctx.meta.result = { authenticated : true, user : user[0], token, e : null}
+				
+				const patchedUser = await ctx.call('user.patchUser', { user : user[0] });
+				if(patchedUser.e != null){
+					throw new Error('the user was not able to be patched');
+				}
+
+				ctx.meta.result = { authenticated : true, user : patchedUser.data, token, e : null}
 			} else {
 				ctx.meta.result = { authenticated : false, user : null, token : null, e : 'password or user is wrong' };
 			}
@@ -118,7 +128,11 @@ class AuthService extends moleculer.Service {
 			const authorized = <{_id}>jwt.verify(cookie, config.jwt.secret)
 			const userExists = await this.broker.call('user.get', { id: authorized!._id });
 			if(!userExists) return ctx.meta.result = { authenticated : false, user : null, token : null, e : 'user doesnt exists anymore'}
-			ctx.meta.result =  { authenticated : true, user : authorized  , token : ctx.params.token }
+			const patchedUser = await ctx.call('user.patchUser', { user : userExists });
+			if(patchedUser.e != null){
+				throw new Error('the user was not able to be patched')
+			}
+			ctx.meta.result =  { authenticated : true, user : patchedUser.data  , token : ctx.params.token }
 			return;
 		} catch(e) {
 			ctx.meta.result =  { authenticated : false, user : null , token : null, e };

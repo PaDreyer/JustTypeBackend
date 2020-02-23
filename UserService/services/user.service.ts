@@ -13,13 +13,13 @@ import shortid from 'shortid';
 const UserService : ServiceSchema = {
     name : 'user',
     settings : {
-        fields: ["_id", "username", "password", "credit", "inBet", "groups", "notifications", "friends"],
+        fields: ["_id", "username", "password", "credit", "inBet", "groups", "bets", "notifications", "friends"],
         entityValidator: {
 			username: { type: "string", min: 4, pattern: /^[a-zA-Z0-9]+$/ },
 			password: { type: "string", min: 8 },
 		}
     },
-    dependencies : ["api"],
+    dependencies : ["api", "group", "bet"],
     mixins : [DbService],
     adapter : new MongooseAdapter('mongodb://localhost/betroom'),
     model: mongoose.model("User", new mongoose.Schema({
@@ -30,6 +30,7 @@ const UserService : ServiceSchema = {
         credit : { type : Number , default : 0 },
         notifications: { type : Array, default: [] },
         groups : { type : Array , default : [] },
+        bets : { type : Array, default : [] },
         inBet : { type : Number, default : 0 }
     })),
     hooks: {
@@ -60,7 +61,33 @@ const UserService : ServiceSchema = {
 
     },
     actions : {
-        register(ctx : any) {
+        async patchUser(ctx){
+            try {
+                let user = ctx.params.user;
+                const patchedUser = await this.userPatch(ctx, user);
+                return ctx.meta.result = { e : null, data : patchedUser }
+            } catch(e) {
+                return ctx.meta.result = { e : e.toString(), data : null };
+            }    
+        },
+        async userBets(ctx:Context){
+            try {
+                let data = await this.getPropertyFromUser(ctx, "bets");
+                ctx.meta.bets = data;
+                const bets = await ctx.call('bet.getBets', { data });
+                return ctx.meta.result = bets;
+            } catch(e) {
+                return ctx.meta.result = { e: e.toString() , data : [] };
+            }
+        },
+        async userCreateBet(ctx:Context){
+            try {
+                let data = await this.getUserFromToken(ctx);
+                let bet = await ctx.call('bet.createbet', { data })
+                return ctx.meta.result = { e: null, data : bet };
+            } catch(e) {
+                return ctx.meta.result = { e: e.toString(), data: null };
+            }
         },
         async userNotifications(ctx:Context){
             const cookie = ctx.meta.req.cookies.betroom;
@@ -80,15 +107,26 @@ const UserService : ServiceSchema = {
                 const data = await this.getPropertyFromUser(ctx, "friends");
                 return ctx.meta.result = { e : null, data };
             } catch(e) {
-                return ctx.meta.result = { e, data: []};
+                return ctx.meta.result = { e: e.toString(), data: []};
             }
         },
         async userGroups(ctx:Context){
             try {
-                const data = await this.getPropertyFromUser(ctx, 'groups');
-                return ctx.meta.result = { e : null, data };
+                let data = await this.getPropertyFromUser(ctx, "groups");
+                ctx.meta.groups = data;
+                const groups = await ctx.call('group.getGroups', { data });
+                return ctx.meta.result = groups;
             } catch(e) {
-                return ctx.meta.result = { e , data : [] };
+                return ctx.meta.result = { e: e.toString() , data : [] };
+            }
+        },
+        async userCreateGroup(ctx:Context){
+            try {
+                let data = await this.getUserFromToken(ctx);
+                let group = await ctx.call('group.createGroup', { data })
+                return ctx.meta.result = { e: null, data : group };
+            } catch(e) {
+                return ctx.meta.result = { e: e.toString(), data: null };
             }
         },
         async userCredit(ctx:Context){
@@ -157,6 +195,11 @@ const UserService : ServiceSchema = {
         }
     },
     methods : {
+        async userPatch(ctx:Context, user) {
+            let patchedUser = await ctx.call('group.patchUser', { user });
+            patchedUser = await ctx.call('bet.patchUser', { user : patchedUser });
+            return patchedUser;
+        },
         async getPropertyFromUser(ctx : Context, property : string) {
             try {
                 const user = await this.getUserFromToken(ctx);
@@ -209,7 +252,7 @@ const UserService : ServiceSchema = {
             let userObject = await this.getUserFromToken(ctx);
             let friendObject = await this.broker.call('user.find', { query : { username : ctx.meta.req.body.username }});
             friendObject = friendObject[0];
-            friendObject.notifications.push({
+            friendObject.notifications.splice(0, 0, {
                 categorie: 'friends',
                 type: 'add',
                 friendName: userObject.username,
@@ -333,7 +376,20 @@ const UserService : ServiceSchema = {
                 return acumm;
             }, []);
 
-            const friendData = await this.broker.call('user.update', { id : friendObect._id, notifications: fNotifications });
+            let fFriends =  friendObect.friends;
+            // freund auf accepted setzen, anschließend response mit success data, update friends ?
+            fFriends = fFriends.reduce( (acumm, currVal, currIndex) => {
+                if(currVal._id == userObject._id){
+                    return acumm;
+                }
+                acumm.push(currVal);
+                return acumm;
+            }, []);
+
+
+            const friendData = await this.broker.call('user.update', { id : friendObect._id, notifications: fNotifications, friends : fFriends });
+
+
 
             return { user: userData, friend: friendData };
         },

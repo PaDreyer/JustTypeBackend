@@ -60,15 +60,19 @@ var corsOptions = {
                     "POST login" : "auth.login",
                     "POST register" : "auth.register",
                     "POST user/notifications" : "user.userNotifications",
-                    "POST user/groups" : "user.userGroups",
-                    "POST user/friends" : "user.userFriends",
+                    "GET  user/groups" : "user.userGroups",
+                    "POST user/groups/create" : "user.userCreateGroup",
+                    "GET  user/bets" : "user.userBets",
+                    "POST user/bets/create" : "user.userCreateBet",
                     "POST user/credit" : "user.userCredit",
                     "POST user/inBet" : "user.userInBet",
-                    "GET user/add" : "user.userGetFriend",
-                    "POST user/add" : "user.userAddFriend",
-                    "POST user/add/accept" : "user.userAcceptFriend",
-                    "POST user/add/deny" : "user.userDenyFriend",
-                    "POST user/delete" : "user.userDeleteFriend",
+                    "GET user/friends" : "user.userFriends",
+                    "GET  user/friends/add" : "user.userGetFriend",
+                    "POST user/friends/add" : "user.userAddFriend",
+                    "POST user/friends/accept" : "user.userAcceptFriend",
+                    "POST user/friends/deny" : "user.userDenyFriend",
+                    "POST user/friends/delete" : "user.userDeleteFriend",
+                    "GET user/bets" : "user.userBets"
                 },
                 onBeforeCall(ctx, route, req, res){
                     //console.log("cookies: ", req.cookies)
@@ -85,7 +89,8 @@ var corsOptions = {
                         };
                     } else {
                         ctx.meta.$responseHeaders = {
-                            "Content-Type" : "application/json"
+                            "Content-Type" : "application/json",
+                            "Accept" : "application/json"
                         }
                     }
                     //console.log("")
@@ -101,9 +106,9 @@ var corsOptions = {
             },
     ],
     onError(req, res, err) {
-        res.setHeader("Content-Type", "application/json");
-        res.writeHead(200);
-        res.end({e: err, user : null, token: null, authenticated : false});
+        //res.setHeader("Content-Type", "application/json");
+        //res.writeHead(200);
+        res.end(JSON.stringify({e: err.toString(), user : null, token: null, authenticated : false}));
     }		
 	},
 })
