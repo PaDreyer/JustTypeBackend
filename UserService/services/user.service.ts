@@ -83,7 +83,7 @@ const UserService : ServiceSchema = {
         async userCreateBet(ctx:Context){
             try {
                 let data = await this.getUserFromToken(ctx);
-                let bet = await ctx.call('bet.createbet', { data })
+                let bet = await ctx.call('bet.createBet', { data })
                 return ctx.meta.result = { e: null, data : bet };
             } catch(e) {
                 return ctx.meta.result = { e: e.toString(), data: null };
@@ -99,6 +99,14 @@ const UserService : ServiceSchema = {
                 return ctx.meta.result = { e: null, data : userData.notifications }
             } catch(e) {
                 return ctx.meta.result = { e: 'Token is invalid', data: []}
+            }
+        },
+        async userNotificationRead(ctx:Context){
+            try {
+                const user = await this.setUserNotificationRead(ctx);
+                return ctx.meta.result = { e: null, data : user.notifications };
+            } catch(e){
+                return ctx.meta.result = { e: e.toString(), data : [] };
             }
         },
         //need to add params for validation
@@ -258,7 +266,8 @@ const UserService : ServiceSchema = {
                 friendName: userObject.username,
                 friendId : userObject._id,
                 time : new Date().toISOString(),
-                url : ``
+                url : ``,
+                shortId : shortid.generate(),
             })
             userObject.friends.push({username: friendObject.username, _id: friendObject._id, accepted : false });
             const result = await this.broker.call('user.update', { _id : friendObject._id , notifications : friendObject.notifications });
@@ -402,6 +411,27 @@ const UserService : ServiceSchema = {
                 return user;
             } catch(e) {
                 throw new Error('The token is invalid');
+            }
+        },
+        async setUserNotificationRead(ctx:Context){
+            try {
+                const id = ctx.meta.req.body.id;
+                let user = await this.getUserFromToken(ctx);
+
+                let uNotifications =  user.notifications;
+                uNotifications = uNotifications.reduce( (acumm, currVal, currIndex) => {
+                    if(currVal.shortId == id){
+                        return acumm;
+                    }
+                    acumm.push(currVal);
+                    return acumm;
+                }, []);
+
+                const updatedUser = await ctx.broker.call('user.update', { id : user._id, notifications: uNotifications });
+
+                return updatedUser;
+            } catch(e) {
+                throw e;
             }
         }
     }

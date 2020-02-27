@@ -61,6 +61,7 @@ var corsOptions = {
                     "POST register" : "auth.register",
                     "POST user/notifications" : "user.userNotifications",
                     "GET  user/groups" : "user.userGroups",
+                    "GET user/group/bets" : "group.getBets",
                     "POST user/groups/create" : "user.userCreateGroup",
                     "GET  user/bets" : "user.userBets",
                     "POST user/bets/create" : "user.userCreateBet",
@@ -72,7 +73,8 @@ var corsOptions = {
                     "POST user/friends/accept" : "user.userAcceptFriend",
                     "POST user/friends/deny" : "user.userDenyFriend",
                     "POST user/friends/delete" : "user.userDeleteFriend",
-                    "GET user/bets" : "user.userBets"
+                    "GET user/bets" : "user.userBets",
+                    "POST user/notifications/read" : "user.userNotificationRead"
                 },
                 onBeforeCall(ctx, route, req, res){
                     //console.log("cookies: ", req.cookies)

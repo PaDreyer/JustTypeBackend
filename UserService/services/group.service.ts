@@ -11,12 +11,12 @@ import {
 import DbService from 'moleculer-db';
 import MongooseAdapter from 'moleculer-db-adapter-mongoose';
 import mongoose from 'mongoose';
-import { rejects } from "assert";
+import shortid from 'shortid';
 
 @Service({
     name : 'group',
     settings : {
-        fields: ["_id", "name", "member", "bets", "createdAt"],
+        fields: ["_id", "name", "member", "description", "bets", "createdAt"],
         entityValidator: {
 			//username: { type: "string", min: 4, pattern: /^[a-zA-Z0-9]+$/ },
 			//password: { type: "string", min: 8 },
@@ -27,6 +27,7 @@ import { rejects } from "assert";
     adapter : new MongooseAdapter('mongodb://localhost/betroom'),
     model: mongoose.model("Group", new mongoose.Schema({
         name: { type: String, required : true },
+        description: { type: String, default : "" },
         member: { type : Array, default : [] },
         bets : { type : Array, default : [] },
         createdAt : { type : Date, required : true }
@@ -67,7 +68,37 @@ class Api extends moleculer.Service {
     @Method
     async userPatch(ctx:Context, user){
         ctx.params.data = user.groups;
-        const patchGroups = await this.getAllGroupsFromUser(ctx);
+        let patchGroups : any = await this.getAllGroupsFromUser(ctx);
+        
+        //es wird dir gruppe gepatch und nicht die wette in der gruppe, das ist der fehler
+        patchGroups = await new this.Promise(async (res, rej)=>{
+            let betsData = [];
+            for(let i = 0; i < patchGroups.length; i++){
+                const mappedBets = patchGroups[i].bets.map( bet => { return { _id : bet }})
+                const betData = await ctx.call('bet.getBets', { data : mappedBets });
+                betsData.push(betData.data);
+            }
+            res(betsData);
+            //der fehler liegt im asynchronen !!! ich muss reduce ersetzen durch for() oder andere synchrone alternativen
+        })
+        /*
+        patchGroups = await patchGroups.reduce( async (acumm, currVal, currIndex) => {
+            if(currVal.bets.length != 0){
+                const mappedBetsToObject = currVal.bets.map( betId => {return { _id : betId } } );
+                console.log("mappedBets: ", mappedBetsToObject)
+                const bets = await ctx.call('bet.getBets', { data : mappedBetsToObject });
+                acumm.push({...currVal, bets });
+                return acumm;
+            }
+            console.log("badumm")
+            acumm.push({...currVal});
+            return acumm;
+        }, []);
+        */
+
+        console.log("patchGrousp: ", patchGroups)
+
+
         let patchedUser = { ...user, groups: patchGroups };
         return patchedUser;
     }
@@ -102,6 +133,8 @@ class Api extends moleculer.Service {
     async createGroup(ctx:Context){
         const name = ctx.meta.req.body.name;
         const member = ctx.meta.req.body.member;
+        const description = ctx.meta.req.body.description;
+        console.log("description: ", description)
 
         const user = ctx.params.data;
 
@@ -120,7 +153,7 @@ class Api extends moleculer.Service {
 
         gMember = [...gMember, ...addRolesToMember];
 
-        let group = await this.broker.call('group.create', {name, member: gMember});
+        let group = await this.broker.call('group.create', {name, member: gMember, description});
         
         const updateUsersGroups = gMember.map( member => member._id);
 
@@ -133,7 +166,8 @@ class Api extends moleculer.Service {
             friendId : user._id,
             groupId : group._id,
             time : new Date().toISOString(),
-            url : ``
+            url : ``,
+            shortId: shortid.generate()
         }
         console.log("die notification: ", notification);
 
@@ -148,6 +182,23 @@ class Api extends moleculer.Service {
         return group;
     }
 
+    @Action()
+    async getBets(ctx:Context){
+        try {
+            const id = ctx.meta.req.body.id
+            const bets = await this.getPropertyFromGroup(ctx, id, 'bets');
+            const patchedBets = await ctx.call('bet.getBets', { data : bets })
+            return ctx.meta.result = { e : null, data : patchedBets };
+        } catch(e){
+            return ctx.meta.result = { e : e.toString(), data : [] };
+        }
+    }
+
+    @Method
+    async getPropertyFromGroup(ctx:Context, id, property){
+        const group = await this.broker.call('group.get', { id } );
+        return group[property];
+    }
 }
 
 export = Api;
